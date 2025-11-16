@@ -13,7 +13,7 @@ app.set("views", path.join(__dirname, "src", "views"));
 
 app.use(express.urlencoded({ extended: true }));
 
-// Halaman Home (default)
+// Halaman Home 
 app.get("/", (req, res) => {
   res.render("home");
 });
@@ -21,6 +21,11 @@ app.get("/", (req, res) => {
 // Halaman Form
 app.get("/daftar", (req, res) => {
   res.render("form");
+});
+
+// Halaman Tentang Kami
+app.get("/tentang", (req, res) => {
+  res.render("tentang");
 });
 
 // Submit Form + Upload
