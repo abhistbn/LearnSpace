@@ -4,8 +4,10 @@ const path = require("path");
 
 const app = express();
 
+// Folder public
 app.use(express.static(path.join(__dirname, "public")));
 
+// Folder upload gambar bukti
 const upload = multer({ dest: path.join(__dirname, "uploads") });
 
 app.set("view engine", "ejs");
@@ -13,22 +15,27 @@ app.set("views", path.join(__dirname, "src", "views"));
 
 app.use(express.urlencoded({ extended: true }));
 
-// Halaman Home 
+// Home
 app.get("/", (req, res) => {
   res.render("home");
 });
 
-// Halaman Form
+// Form daftar
 app.get("/daftar", (req, res) => {
   res.render("form");
 });
 
-// Halaman Tentang Kami
+// Tentang
 app.get("/tentang", (req, res) => {
   res.render("tentang");
 });
 
-// Submit Form + Upload
+// Success Page
+app.get("/sukses", (req, res) => {
+  res.render("sukses");
+});
+
+// Submit Form
 app.post("/daftar", upload.single("bukti"), (req, res) => {
   const { nama, email, kelas } = req.body;
   const fileData = req.file;
@@ -40,11 +47,8 @@ app.post("/daftar", upload.single("bukti"), (req, res) => {
   console.log("===== FILE UPLOAD =====");
   console.log(fileData);
 
-  res.send(`<h2>Pendaftaran berhasil!</h3>
-            <p>Nama: ${nama}</p>
-            <p>Email: ${email}</p>
-            <p>Kelas: ${kelas}</p>
-            <a href="/">Kembali ke Home</a>`);
+  // Redirect ke halaman sukses
+  res.redirect('/sukses');
 });
 
 app.listen(3000, () => {

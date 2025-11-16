@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pendaftaran Berhasil</title>
+    <link rel="stylesheet" href="/css/sukses.css" />
+  </head>
+  <body>
+    <div class="success-container">
+      <div class="success-icon">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <!-- Circle background with gradient -->
+          <defs>
+            <linearGradient
+              id="circleGradient"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" style="stop-color: #a995c7; stop-opacity: 1" />
+              <stop
+                offset="100%"
+                style="stop-color: #d7c8ec; stop-opacity: 1"
+              />
+            </linearGradient>
+          </defs>
+
+          <!-- Outer circle -->
+          <circle
+            cx="100"
+            cy="100"
+            r="100"
+            fill="url(#circleGradient)"
+            opacity="0.15"
+          />
+
+          <!-- Middle circle -->
+          <circle
+            cx="100"
+            cy="100"
+            r="80"
+            fill="url(#circleGradient)"
+            opacity="0.25"
+          />
+
+          <!-- Inner circle -->
+          <circle cx="100" cy="100" r="60" fill="url(#circleGradient)" />
+
+          <!-- Checkmark -->
+          <path
+            d="M 65 100 L 88 123 L 135 75"
+            stroke="white"
+            stroke-width="10"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+
+      <h1 class="success-title">Pendaftaran Berhasil!</h1>
+      <p class="success-message">
+        Terima kasih, data kamu telah kami terima. Mohon tunggu admin
+        memverifikasi pembayaran.
+      </p>
+
+      <a href="/" class="btn-home">Kembali ke Beranda</a>
+    </div>
+  </body>
+</html>
