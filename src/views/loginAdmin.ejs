@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Admin</title>
+    <link rel="stylesheet" href="/css/loginAdmin.css">
+</head>
+<body>
+    <div class="header-text">login admin</div>
+    
+    <div class="login-container">
+        <div class="success-message" id="successMessage">Login berhasil! Mengalihkan...</div>
+        <div class="error-message" id="errorMessage">Login gagal! Periksa kembali nama dan password.</div>
+        
+        <h1>Masuk Sebagai Admin</h1>
+        <p>Masukkan nama dan password sebagai admin LearnSpace</p>
+        
+        <form action="/login" method="POST" id="loginForm">
+            <div class="form-group">
+                <label for="nama">Nama</label>
+                <input 
+                    type="text" 
+                    id="nama" 
+                    name="nama" 
+                    placeholder="Masukkan nama anda"
+                    required
+                >
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="password-wrapper">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Enter your Password"
+                        required
+                    >
+                    <button type="button" class="toggle-password" onclick="togglePassword()">
+                        👁
+                    </button>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-login">Masuk</button>
+        </form>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleBtn = document.querySelector('.toggle-password');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.textContent = '👁';
+            }
+        }
+
+        // Form submission dengan AJAX
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const nama = document.getElementById('nama').value;
+            const password = document.getElementById('password').value;
+            
+            const successMsg = document.getElementById('successMessage');
+            const errorMsg = document.getElementById('errorMessage');
+            
+            // Kirim data ke server
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ nama, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    successMsg.style.display = 'block';
+                    errorMsg.style.display = 'none';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 1500);
+                } else {
+                    errorMsg.style.display = 'block';
+                    successMsg.style.display = 'none';
+                    
+                    setTimeout(() => {
+                        errorMsg.style.display = 'none';
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                errorMsg.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+                errorMsg.style.display = 'block';
+                successMsg.style.display = 'none';
+                
+                setTimeout(() => {
+                    errorMsg.style.display = 'none';
+                }, 3000);
+            });
+        });
+    </script>
+</body>
+</html>
+
