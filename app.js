@@ -46,6 +46,11 @@ app.post("/daftar", upload.single("bukti"), (req, res) => {
             <p>Kelas: ${kelas}</p>
             <a href="/">Kembali ke Home</a>`);
 });
+ // Halaman Admin (sementara dl)
+app.get("/admin", (req, res) => {
+  res.render("admin");
+});
+
 
 app.listen(3000, () => {
   console.log("Server berjalan di http://localhost:3000");
