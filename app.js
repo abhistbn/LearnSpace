@@ -33,6 +33,7 @@ function checkAdmin(req, res, next) {
     return res.redirect("/login");
 }
 
+
 // ===================== HALAMAN PUBLIK =====================
 
 // HOME
@@ -50,25 +51,26 @@ app.get("/tentang", (req, res) => {
   res.render("tentang");
 });
 
+// Success Page
+app.get("/sukses", (req, res) => {
+  res.render("sukses");
+});
+
 // SUBMIT FORM PENDAFTARAN
 app.post("/daftar", upload.single("bukti"), (req, res) => {
   const { nama, email, kelas } = req.body;
+  const fileData = req.file;
 
   console.log("===== DATA PESERTA =====");
-  console.log(req.body);
+  console.log("Nama:", nama);
+  console.log("Email:", email);
+  console.log("Kelas:", kelas);
   console.log("===== FILE UPLOAD =====");
-  console.log(req.file);
+  console.log(fileData);
 
-  res.send(`
-    <h2>Pendaftaran berhasil!</h3>
-    <p>Nama: ${nama}</p>
-    <p>Email: ${email}</p>
-    <p>Kelas: ${kelas}</p>
-    <a href="/">Kembali ke Home</a>
-  `);
+  // Redirect ke halaman sukses
+  res.redirect('/sukses');
 });
-
-// ===================== LOGIN ADMIN =====================
 
 // Halaman Login Admin
 app.get("/login", (req, res) => {
