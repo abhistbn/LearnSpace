@@ -39,11 +39,9 @@ const db = mysql
 
 // ===================== S3 CLIENT =====================
 const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY,
-    secretAccessKey: process.env.AWS_SECRET_KEY,
-  },
+  region: process.env.AWS_REGION,
+  // HAPUS OBYEK 'credentials'
+  // SDK akan otomatis mengambil kredensial dari Learner Lab Environment
 });
 
 // ===================== HALAMAN PUBLIK =====================
