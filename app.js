@@ -88,25 +88,19 @@ app.post("/generate-upload-url", async (req, res) => {
 });
 
 
+// app.js (Sekitar baris 108)
 
 // ===================== FORM PENDAFTARAN =====================
 app.post("/daftar", async (req, res) => {
   try {
     const { nama, email, kelas, buktiURL, fileName, fileKey } = req.body;
 
-    // PASTIKAN STRING SQL SANGAT BERSIH!
+    // REVISI: Pastikan string SQL tidak mengandung spasi atau newline berlebih di awal/akhir
     const sql = `
       INSERT INTO peserta 
       (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
       VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    `.trim(); // <-- TAMBAHKAN .trim() untuk menghilangkan semua spasi/newline di awal dan akhir
-    
-    // Atau, secara manual tulis tanpa spasi berlebih:
-    /*
-    const sql = `INSERT INTO peserta 
-    (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending')`;
-    */
+    `.trim(); // <-- Tambahkan .trim() di sini
 
     await db.query(sql, [nama, email, kelas, fileKey, fileName, buktiURL]);
 
@@ -123,7 +117,6 @@ app.post("/daftar", async (req, res) => {
     });
   }
 });
-
 
 // ===================== LOGIN ADMIN =====================
 app.get("/login", (req, res) => res.render("loginAdmin"));
