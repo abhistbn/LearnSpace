@@ -1,0 +1,325 @@
+/* ===================================
+   CSS Variables
+   =================================== */
+:root {
+    --primary: #4b3b63;
+    --secondary: #6a5687;
+    --tertiary: #a995c7;
+    --accent: #d7c8ec;
+    --light: #f2ecfa;
+    --white: #ffffff;
+}
+
+/* ===================================
+   Reset & Base Styles
+   =================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--light);
+    padding: 0;
+    margin: 0;
+    padding-top: 120px;
+}
+
+/* ===================================
+   Floating Header
+   =================================== */
+.nav-container {
+    position: fixed;
+    top: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 60px;
+    width: auto;
+    padding: 1rem 3rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary), var(--tertiary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 3px;
+}
+
+/* ===================================
+   Container
+   =================================== */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 60px;
+}
+
+/* ===================================
+   Statistics Cards
+   =================================== */
+.stats-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    border-radius: 16px;
+    padding: 27px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stat-card.total {
+    background-color: var(--secondary);
+    flex: 2;
+}
+
+.stat-card.accepted {
+    background-color: var(--tertiary);
+    flex: 1;
+}
+
+.stat-card.rejected {
+    background-color: var(--accent);
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--white);
+}
+
+.stat-card.rejected .stat-label,
+.stat-card.rejected .stat-value {
+    color: var(--primary);
+}
+
+.stat-value {
+    font-size: 48px;
+    font-weight: bold;
+    color: var(--white);
+    text-align: center;
+}
+
+/* ===================================
+   Table Container
+   =================================== */
+.table-container {
+    background-color: var(--accent);
+    border-radius: 20px;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid var(--tertiary);
+}
+
+/* ===================================
+   Table Styles
+   =================================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background-color: var(--accent);
+}
+
+th {
+    padding: 20px 15px;
+    text-align: left;
+    font-weight: bold;
+    color: var(--primary);
+    font-size: 15px;
+}
+
+th:last-child {
+    text-align: center;
+}
+
+tbody tr {
+    transition: background-color 0.2s;
+}
+
+tbody tr:hover {
+    background-color: var(--light);
+}
+
+td {
+    padding: 20px 15px;
+    background-color: var(--white);
+    border-bottom: 1px solid var(--accent);
+    color: var(--primary);
+}
+
+td:nth-child(5) {
+    text-align: left;
+}
+
+td:last-child {
+    text-align: center;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+/* ===================================
+   File Button
+   =================================== */
+.file-button {
+    width: 155px;          
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    background-color: var(--white);
+    border: 2px solid var(--tertiary);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--primary);
+    font-family: 'Poppins', sans-serif;
+    transition: all 0.3s ease;
+}
+
+.file-button:hover {
+    background-color: var(--light);
+    border-color: var(--secondary);
+    transform: translateY(-2px);
+}
+
+.file-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* ===================================
+   Status Buttons
+   =================================== */
+.status-display {
+    display: flex;
+    justify-content: center;
+}
+
+.status-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Poppins', sans-serif;
+    transition: all 0.3s ease;
+}
+
+.btn-accept {
+    background-color: var(--tertiary);
+    color: var(--white);
+}
+
+.btn-accept:hover {
+    background-color: var(--secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(169, 149, 199, 0.3);
+}
+
+.btn-reject {
+    background-color: var(--accent);
+    color: var(--primary);
+    border: 2px solid var(--tertiary);
+}
+
+.btn-reject:hover {
+    background-color: var(--tertiary);
+    color: var(--white);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(169, 149, 199, 0.3);
+}
+
+.checkmark::before {
+    content: '✓';
+}
+
+.cross::before {
+    content: '✕';
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.status-accepted {
+    background-color: var(--tertiary);
+    color: var(--white);
+}
+
+.status-rejected {
+    background-color: var(--accent);
+    color: var(--primary);
+    border: 2px solid var(--tertiary);
+}
+
+/* ===================================
+   Responsive Design
+   =================================== */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 20px;
+    }
+
+    .stats-container {
+        flex-direction: column;
+    }
+
+    .stat-card {
+        flex: 1;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    th, td {
+        padding: 15px 10px;
+        font-size: 14px;
+    }
+
+    .status-buttons {
+        flex-direction: column;
+    }
+
+    .btn {
+        font-size: 12px;
+        padding: 6px 15px;
+    }
+}

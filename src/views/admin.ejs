@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Status Pembayaran</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <header class="nav-container">
+        <div class="logo">LearnSpace</div>
+    </header>
+
+    <div class="container">
+        <div class="stats-container">
+            <div class="stat-card total">
+                <div class="stat-label">Total Peserta</div>
+                <div class="stat-value" id="totalCount"><%= typeof stats !== 'undefined' ? stats.total : 0 %></div>
+            </div>
+            <div class="stat-card accepted">
+                <div class="stat-label">Diterima</div>
+                <div class="stat-value" id="acceptedCount"><%= typeof stats !== 'undefined' ? stats.accepted : 0 %></div>
+            </div>
+            <div class="stat-card rejected">
+                <div class="stat-label">Ditolak</div>
+                <div class="stat-value" id="rejectedCount"><%= typeof stats !== 'undefined' ? stats.rejected : 0 %></div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>NAMA</th>
+                        <th>EMAIL</th>
+                        <th>KELAS</th>
+                        <th>BUKTI PEMBAYARAN</th>
+                        <th>STATUS</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <% if (typeof registrations === 'undefined' || registrations.length === 0) { %>
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">
+                                Belum ada pendaftaran
+                            </td>
+                        </tr>
+                    <% } else { %>
+                        <% registrations.forEach(function(registration) { %>
+                            <tr data-id="<%= registration.id %>">
+                                <td><%= registration.id %></td>
+                                <td><%= registration.nama %></td>
+                                <td><%= registration.email %></td>
+                                <td><%= registration.kelas %></td>
+                                <td>
+                                    <% if (registration.buktiPath) { %>
+                                        <a href="<%= registration.buktiPath %>" target="_blank" class="file-button">
+                                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                                                <polyline points="13 2 13 9 20 9"></polyline>
+                                            </svg>
+                                            Lihat File
+                                        </a>
+                                    <% } else { %>
+                                        <span style="color: #999;">Tidak ada file</span>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <div class="status-display">
+                                        <% if (registration.status === 'pending') { %>
+                                            <div class="status-buttons">
+                                                <button class="btn btn-accept" onclick="updateStatus('<%= registration.id %>', 'accepted')">
+                                                    <span class="checkmark"></span> Terima
+                                                </button>
+                                                <button class="btn btn-reject" onclick="updateStatus('<%= registration.id %>', 'rejected')">
+                                                    <span class="cross"></span> Tolak
+                                                </button>
+                                            </div>
+                                        <% } else if (registration.status === 'accepted') { %>
+                                            <span class="status-badge status-accepted">
+                                                <span class="checkmark"></span> Diterima
+                                            </span>
+                                        <% } else if (registration.status === 'rejected') { %>
+                                            <span class="status-badge status-rejected">
+                                                <span class="cross"></span> Ditolak
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+</body>
+</html>

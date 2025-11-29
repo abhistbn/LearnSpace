@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daftar Kelas - LearnSpace</title>
+    <link rel="stylesheet" href="/css/form.css" />
+    <script src="/js/form.js" defer></script>
+  </head>
+  <body>
+    <!-- Floating Navigation -->
+    <nav class="nav-container">
+      <div class="nav-content">
+        <a href="/" class="logo">LearnSpace</a>
+        <ul class="nav-menu">
+          <li><a href="/">Beranda</a></li>
+          <li><a href="/daftar" class="active">Daftar</a></li>
+          <li><a href="/">Tentang Kami</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Form Section -->
+    <section class="form-section">
+      <div class="form-container">
+        <div class="form-header">
+          <h1>Daftar Kelas</h1>
+          <p>Isi data di bawah ini untuk mendaftarkan ke kelas pilihan!</p>
+        </div>
+
+        <form id="registrationForm" method="POST" action="/daftar" enctype="multipart/form-data">
+          <div class="form-group">
+            <label for="nama">Nama</label>
+            <input type="text" id="nama" name="nama" placeholder="Masukkan nama anda" required />
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="Masukkan Email Anda" required />
+          </div>
+
+          <div class="form-group">
+            <label for="kelas">Kelas</label>
+            <select id="kelas" name="kelas" required>
+              <option value="">Nama Kelas</option>
+              <option value="ui-ux">UI/UX Beginner Class</option>
+              <option value="web-dev">Web Development Bootcamp</option>
+              <option value="data-analytics">Data Analytics for Starter</option>
+              <option value="digital-marketing">Digital Marketing Masterclass</option>
+              <option value="mobile-app">Mobile App Development</option>
+              <option value="graphic-design">Graphic Design Fundamentals</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Bukti Pembayaran</label>
+            <div class="upload-area" id="uploadArea">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <p> Click to upload
+                <span style="color: #999">or drag and drop</span>
+              </p>
+              <p>png, jpg, jpeg - Up to 50MB</p>
+            </div>
+            <input type="file" id="fileUpload" name="bukti" accept="image/*" style="display: none" required/>
+
+            <div class="file-preview-container" id="filePreviewContainer">
+              <div class="file-preview">
+                <button type="button" class="btn-remove-file" id="btnRemoveFile">Hapus</button>
+                <img src="" alt="Preview" class="preview-image" id="previewImage" />
+                <div class="preview-filename" id="previewFilename"></div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit">Kirim</button>
+        </form>
+      </div>
+    </section>
+  </body>
+</html>
