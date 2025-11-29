@@ -5,6 +5,8 @@ const multer = require("multer");
 const path = require("path");
 const session = require("express-session");
 const mysql = require("mysql2");
+const fs = require("fs");
+const AWS = require("aws-sdk");
 
 const app = express();
 
@@ -81,50 +83,77 @@ app.get("/sukses", (req, res) => {
   res.render("sukses");
 });
 
-// Submit Form Pendaftaran
-app.post("/daftar", upload.single("bukti"), (req, res) => {
-  const { nama, email, kelas } = req.body;
-  const fileData = req.file;
-
-  if (!nama || !email || !kelas || !fileData) {
-    return res.status(400).json({
-      success: false,
-      message: "Data tidak lengkap, mohon isi semua field!",
-    });
-  }
-
-  const sql = `
-    INSERT INTO peserta (nama, email, kelas, buktiPath, buktiOriginalName, status)
-    VALUES (?, ?, ?, ?, ?, 'pending')
-  `;
-
-  const values = [
-    nama,
-    email,
-    kelas,
-    `/uploads/${fileData.filename}`,
-    fileData.originalname,
-  ];
-
-  db.query(sql, values, (err, result) => {
-    if (err) {
-      console.error("❌ Error menyimpan data:", err);
-      return res.status(500).json({
-        success: false,
-        message: "Gagal menyimpan data ke database",
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Pendaftaran berhasil!",
-      redirectUrl: "/sukses",
-    });
-  });
+// ===================== CONFIG AWS S3 TANPA ACCESS KEY =====================
+AWS.config.update({
+  region: process.env.AWS_REGION,
 });
 
-// ===================== LOGIN ADMIN =====================
+const s3 = new AWS.S3();
 
+
+// ===================== FORM PENDAFTARAN =====================
+app.post("/daftar", upload.single("foto"), async (req, res) => {
+  try {
+    const file = req.file;
+    let fileURL = null;
+    let fileOriginalName = null;
+    let filePathInBucket = null;
+
+    // Upload ke S3
+    if (file) {
+      const fileContent = fs.readFileSync(file.path);
+
+      const uploadParams = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: `uploads/${Date.now()}_${file.originalname}`,
+        Body: fileContent,
+        ACL: "public-read",
+        ContentType: file.mimetype,
+      };
+
+      const s3Result = await s3.upload(uploadParams).promise();
+
+      fileURL = s3Result.Location;
+      fileOriginalName = file.originalname;
+      filePathInBucket = uploadParams.Key;
+
+      fs.unlinkSync(file.path);
+    }
+
+    // Simpan database
+    const query = `
+      INSERT INTO peserta 
+      (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status) 
+      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    `;
+
+    await db.query(query, [
+      req.body.nama,
+      req.body.email,
+      req.body.kelas,
+      filePathInBucket,
+      fileOriginalName,
+      fileURL
+    ]);
+
+    return res.json({
+      success: true,
+      message: "Pendaftaran berhasil!",
+      fileURL: fileURL
+    });
+
+  } catch (err) {
+    console.error("❌ Error /daftar:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat mendaftar"
+    });
+  }
+});
+
+
+// ===================== LOGIN ADMIN =====================
 app.get("/login", (req, res) => {
   res.render("loginAdmin");
 });
@@ -153,7 +182,6 @@ app.post("/login", (req, res) => {
 });
 
 // ===================== DASHBOARD ADMIN =====================
-
 app.get("/admin", checkAdmin, (req, res) => {
   const sql = "SELECT * FROM peserta ORDER BY id DESC";
 
@@ -219,54 +247,6 @@ app.get("/logout", (req, res) => {
   req.session.destroy();
   res.redirect("/login");
 });
-
-
-// ===================== UPLOAD KE AWS S3 =====================
-const AWS = require("aws-sdk");
-const fs = require("fs");
-
-// Konfigurasi AWS (TANPA access key)
-AWS.config.update({
-  region: process.env.AWS_REGION,
-});
-
-const s3 = new AWS.S3();
-
-app.post("/upload", upload.single("foto"), async (req, res) => {
-  try {
-    const file = req.file;
-
-    if (!file) {
-      return res.status(400).send("File tidak ditemukan");
-    }
-
-    const fileContent = fs.readFileSync(file.path);
-
-    const params = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: `uploads/${Date.now()}_${file.originalname}`,
-      Body: fileContent,
-      ACL: "public-read",
-      ContentType: file.mimetype,
-    };
-
-    const uploadResult = await s3.upload(params).promise();
-
-    fs.unlinkSync(file.path);
-
-    res.json({
-      success: true,
-      message: "Upload berhasil",
-      url: uploadResult.Location,
-    });
-
-  } catch (err) {
-    console.error("❌ Upload error:", err);
-    return res.status(500).send("Upload gagal");
-  }
-});
-
-
 
 // ===================== PORT =====================
 const PORT = process.env.PORT || 3000;
