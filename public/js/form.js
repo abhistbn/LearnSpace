@@ -1,80 +1,77 @@
-document.getElementById("registrationForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+document.addEventListener("DOMContentLoaded", () => {
+  const uploadArea = document.getElementById("uploadArea");
+  const fileInput = document.getElementById("fileUpload");
+  const previewContainer = document.getElementById("filePreviewContainer");
+  const previewImage = document.getElementById("previewImage");
+  const previewName = document.getElementById("previewFilename");
+  const removeBtn = document.getElementById("btnRemoveFile");
+  const buktiURL = document.getElementById("buktiURL");
 
-  const form = e.target;
-  const file = fileUpload.files[0];
+  // Klik area upload
+  uploadArea.addEventListener("click", () => fileInput.click());
 
-  if (!file) {
-    showNotification("Silakan upload bukti pembayaran.", "error");
-    return;
-  }
+  // Drag over
+  uploadArea.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    uploadArea.classList.add("drag-over");
+  });
 
-  const submitBtn = form.querySelector(".btn-submit");
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Mengirim...";
+  uploadArea.addEventListener("dragleave", () => {
+    uploadArea.classList.remove("drag-over");
+  });
 
-  try {
-    let fileURL = "";
-    let fileKey = "";
-    let fileName = file.name;
+  uploadArea.addEventListener("drop", (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove("drag-over");
+    fileInput.files = e.dataTransfer.files;
+    handleFile(fileInput.files[0]);
+  });
 
-    // 1. Request presigned URL
-    const presignRes = await fetch("/generate-upload-url", {
+  // Input manual
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files.length > 0) {
+      handleFile(fileInput.files[0]);
+    }
+  });
+
+  async function handleFile(file) {
+    if (!file) return;
+
+    // Preview
+    previewContainer.style.display = "block";
+    uploadArea.style.display = "none";
+
+    previewImage.src = URL.createObjectURL(file);
+    previewName.textContent = file.name;
+
+    // 1. Request presigned URL dari backend
+    const res = await fetch("/generate-upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         fileName: file.name,
-        fileType: file.type,
+        fileType: file.type
       }),
     });
 
-    const presignData = await presignRes.json();
+    const data = await res.json();
 
-    if (!presignData.success) throw new Error("Gagal membuat presigned URL");
-
-    const { uploadURL, fileURL: s3FileURL, key } = presignData;
-
-    fileURL = s3FileURL;
-    fileKey = key;
-
-    // 2. Upload ke S3
-    await fetch(uploadURL, {
+    // 2. Upload file ke S3
+    await fetch(data.uploadURL, {
       method: "PUT",
       headers: { "Content-Type": file.type },
       body: file,
     });
 
-    // 3. ==== SET HIDDEN INPUTS ====
-    document.getElementById("fileURL").value = fileURL;
-    document.getElementById("fileName").value = fileName;
-    document.getElementById("fileKey").value = fileKey;
-
-    // 4. Submit data ke backend
-    const sendRes = await fetch("/daftar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nama: form.nama.value,
-        email: form.email.value,
-        kelas: form.kelas.value,
-        fileURL,
-        fileName,
-        fileKey,
-      }),
-    });
-
-    const result = await sendRes.json();
-
-    if (result.success) {
-      showNotification("Pendaftaran berhasil!", "success");
-      setTimeout(() => window.location.href = "/sukses", 800);
-    } else {
-      showNotification(result.message, "error");
-    }
-  } catch (err) {
-    showNotification("Error: " + err.message, "error");
+    // 3. Simpan URL final ke hidden input
+    buktiURL.value = data.fileURL;
   }
 
-  submitBtn.disabled = false;
-  submitBtn.textContent = "Daftar";
+  // Hapus file
+  removeBtn.addEventListener("click", () => {
+    previewContainer.style.display = "none";
+    uploadArea.style.display = "block";
+    buktiURL.value = "";
+    fileInput.value = "";
+  });
 });
