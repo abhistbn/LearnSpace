@@ -95,16 +95,12 @@ app.post("/daftar", async (req, res) => {
   try {
     const { nama, email, kelas, buktiURL, fileName, fileKey } = req.body;
 
-    // REVISI: Pastikan string SQL tidak mengandung spasi atau newline berlebih di awal/akhir
-    const sql = `
-      INSERT INTO peserta 
-      (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    `.trim(); // <-- Tambahkan .trim() di sini
+    // SOLUSI FINAL: Query SQL SATU BARIS untuk menghindari ER_PARSE_ERROR
+    const sql = "INSERT INTO peserta (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')";
 
     await db.query(sql, [nama, email, kelas, fileKey, fileName, buktiURL]);
 
-    // Kirim respons JSON yang menunjukkan sukses (frontend akan menangani redirect)
+    // Kirim respons JSON untuk diolah oleh JavaScript di frontend (redirect)
     return res.json({
       success: true,
       message: "Pendaftaran berhasil, siap untuk redirect.",
