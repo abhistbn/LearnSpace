@@ -1,51 +1,104 @@
-<form id="registrationForm" method="POST" action="/daftar">
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daftar Kelas - LearnSpace</title>
 
-  <div class="form-group">
-    <label for="nama">Nama</label>
-    <input type="text" id="nama" name="nama" required />
-  </div>
+    <link rel="stylesheet" href="/css/form.css" />
+    <script defer src="/js/presign-upload.js"></script>
+  </head>
 
-  <div class="form-group">
-    <label for="email">Email</label>
-    <input type="email" id="email" name="email" required />
-  </div>
-
-  <div class="form-group">
-    <label for="kelas">Kelas</label>
-    <select id="kelas" name="kelas" required>
-      <option value="">Nama Kelas</option>
-      <option value="ui-ux">UI/UX Beginner Class</option>
-      <option value="web-dev">Web Development Bootcamp</option>
-      <option value="data-analytics">Data Analytics Starter</option>
-      <option value="digital-marketing">Digital Marketing</option>
-      <option value="mobile-app">Mobile App Development</option>
-      <option value="graphic-design">Graphic Design</option>
-    </select>
-  </div>
-
-  <!-- Upload Area -->
-  <div class="form-group">
-    <label>Bukti Pembayaran</label>
-
-    <div class="upload-area" id="uploadArea">
-      <p>Klik untuk upload atau drag-and-drop</p>
-    </div>
-
-    <input type="file" id="fileUpload" accept="image/*" style="display:none" required />
-
-    <div id="filePreviewContainer" class="file-preview-container">
-      <div class="file-preview">
-        <button type="button" id="btnRemoveFile" class="btn-remove-file">Hapus</button>
-        <img id="previewImage" class="preview-image" />
-        <div id="previewFilename" class="preview-filename"></div>
+  <body>
+    <!-- NAVBAR -->
+    <nav class="nav-container">
+      <div class="nav-content">
+        <a href="/" class="logo">LearnSpace</a>
+        <ul class="nav-menu">
+          <li><a href="/">Beranda</a></li>
+          <li><a href="/daftar" class="active">Daftar</a></li>
+          <li><a href="/">Tentang Kami</a></li>
+        </ul>
       </div>
-    </div>
-  </div>
+    </nav>
 
-  <!-- Hidden input untuk hasil upload S3 -->
-  <input type="hidden" id="fileURL" name="fileURL" />
-  <input type="hidden" id="fileName" name="fileName" />
-  <input type="hidden" id="fileKey" name="fileKey" />
+    <!-- FORM SECTION -->
+    <section class="form-section">
+      <div class="form-container">
+        <div class="form-header">
+          <h1>Daftar Kelas</h1>
+          <p>Isi data di bawah ini untuk mendaftarkan ke kelas pilihan!</p>
+        </div>
 
-  <button type="submit" class="btn-submit">Kirim</button>
-</form>
+        <!-- Form daftar (tanpa enctype, biar JS upload file ke S3) -->
+        <form id="registrationForm" method="POST" action="/daftar">
+          
+          <!-- Nama -->
+          <div class="form-group">
+            <label for="nama">Nama</label>
+            <input type="text" id="nama" name="nama" required />
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required />
+          </div>
+
+          <!-- Kelas -->
+          <div class="form-group">
+            <label for="kelas">Kelas</label>
+            <select id="kelas" name="kelas" required>
+              <option value="">Nama Kelas</option>
+              <option value="ui-ux">UI/UX Beginner Class</option>
+              <option value="web-dev">Web Development Bootcamp</option>
+              <option value="data-analytics">Data Analytics Starter</option>
+              <option value="digital-marketing">Digital Marketing</option>
+              <option value="mobile-app">Mobile App Development</option>
+              <option value="graphic-design">Graphic Design</option>
+            </select>
+          </div>
+
+          <!-- Upload Bukti Pembayaran -->
+          <div class="form-group">
+            <label>Bukti Pembayaran</label>
+
+            <div class="upload-area" id="uploadArea">
+              <p>Klik untuk upload atau drag-and-drop</p>
+            </div>
+
+            <input 
+              type="file" 
+              id="fileUpload" 
+              accept="image/*" 
+              style="display:none" 
+              required 
+            />
+
+            <!-- Preview -->
+            <div id="filePreviewContainer" class="file-preview-container">
+              <div class="file-preview">
+                <button 
+                  type="button" 
+                  id="btnRemoveFile" 
+                  class="btn-remove-file"
+                >
+                  Hapus
+                </button>
+
+                <img id="previewImage" class="preview-image" />
+                <div id="previewFilename" class="preview-filename"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden field untuk URL S3 -->
+          <input type="hidden" id="buktiURL" name="buktiURL" />
+
+          <!-- Tombol submit -->
+          <button type="submit" class="btn-submit">Kirim</button>
+        </form>
+      </div>
+    </section>
+  </body>
+</html>
