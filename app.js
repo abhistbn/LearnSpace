@@ -92,7 +92,7 @@ const s3 = new AWS.S3();
 
 
 // ===================== FORM PENDAFTARAN =====================
-app.post("/daftar", upload.single("foto"), async (req, res) => {
+app.post("/daftar", upload.single("bukti"), async (req, res) => {
   try {
     const file = req.file;
     let fileURL = null;
