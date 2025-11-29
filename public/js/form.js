@@ -11,13 +11,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputFileName = document.getElementById("fileName"); 
   const inputFileKey = document.getElementById("fileKey"); 
 
-  // Ambil elemen form
-  const registrationForm = document.getElementById("registrationForm"); // BARU: Ambil elemen form
+  // Ambil elemen form dan tombol submit
+  const registrationForm = document.getElementById("registrationForm");
+  const btnSubmit = document.getElementById("btnSubmit"); // <-- AMBIL TOMBOL SUBMIT
 
   // Klik area upload
   uploadArea.addEventListener("click", () => fileInput.click());
 
-  // Drag-and-drop handlers
+  // Drag-and-drop handlers (kode ini tetap sama)
   uploadArea.addEventListener("dragover", (e) => {
     e.preventDefault();
     uploadArea.classList.add("drag-over");
@@ -50,6 +51,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     previewImage.src = URL.createObjectURL(file);
     previewName.textContent = file.name;
+    
+    // --- START: KONTROL TOMBOL SUBMIT SAAT UPLOAD ---
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = "Mengunggah...";
+    // --- END: KONTROL TOMBOL SUBMIT SAAT UPLOAD ---
 
     try {
       // 1. Request presigned URL dari backend
@@ -70,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // 2. Upload file ke S3 menggunakan presigned URL
-      const uploadRes = await fetch(data.uploadUrl, { // Ubah nama variabel res agar tidak konflik
+      const uploadRes = await fetch(data.uploadUrl, { 
         method: "PUT",
         headers: { 
           "Content-Type": file.type 
@@ -85,15 +91,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 3. Simpan URL final dan metadata ke hidden input
       buktiURL.value = data.fileURL;
-      inputFileName.value = data.fileName; // Nama file yang sudah "safe"
-      inputFileKey.value = data.fileKey; // Key path di S3
+      inputFileName.value = data.fileName; 
+      inputFileKey.value = data.fileKey; 
       
       alert("Upload bukti pembayaran berhasil! Silakan klik 'Kirim' untuk menyelesaikan pendaftaran.");
+      
+      // --- START: AKTIFKAN KEMBALI TOMBOL SUBMIT SETELAH SUKSES ---
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = "Kirim";
+      // --- END: AKTIFKAN KEMBALI TOMBOL SUBMIT SETELAH SUKSES ---
 
     } catch (error) {
       console.error("Error dalam proses upload:", error);
       alert(`Gagal mengunggah file. Detail: ${error.message}`);
       
+      // --- START: AKTIFKAN KEMBALI TOMBOL SUBMIT SETELAH GAGAL ---
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = "Kirim";
+      // --- END: AKTIFKAN KEMBALI TOMBOL SUBMIT SETELAH GAGAL ---
+      
       // Reset UI dan input jika gagal
       removeBtn.click();
     }
@@ -111,25 +127,33 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Reset file input
     fileInput.value = ""; 
+
+    // Pastikan tombol submit selalu aktif saat tidak ada file
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = "Kirim";
   });
 
 
   // ==========================================================
-  // =============== HANDLER SUBMIT FORM (REVISI) ===============
+  // =============== HANDLER SUBMIT FORM (TETAP SAMA) ===============
   // ==========================================================
 
   registrationForm.addEventListener("submit", async (e) => {
-    e.preventDefault(); // Mencegah submit form HTML biasa
+    e.preventDefault(); 
 
-    // Pastikan buktiURL terisi (File sudah diupload)
+    // Pastikan buktiURL terisi (Cek ini tetap diperlukan sebagai pengaman)
     if (!buktiURL.value) {
       alert("Harap unggah bukti pembayaran terlebih dahulu sebelum mengirim formulir!");
       return;
     }
+    
+    // Nonaktifkan tombol saat submit data ke database
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = "Mengirim...";
 
     // Ambil data dari form (termasuk hidden input)
     const formData = new FormData(registrationForm);
-    const data = Object.fromEntries(formData.entries()); // Mengubah FormData menjadi objek JSON
+    const data = Object.fromEntries(formData.entries()); 
 
     try {
       // Kirim data pendaftaran ke backend
@@ -150,6 +174,12 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       console.error("Error submit form:", error);
       alert("Terjadi masalah saat mengirim pendaftaran. Cek konsol untuk detail.");
-    }
+    } finally {
+        // Pastikan tombol aktif kembali jika ada kegagalan sebelum redirect
+        if (window.location.pathname !== "/sukses") {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Kirim";
+        }
+    }
   });
 });
