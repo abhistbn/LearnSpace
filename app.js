@@ -1,3 +1,4 @@
+
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
@@ -13,47 +14,6 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-
-// ==== KONEKSI DATABASE ====
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',        // default XAMPP
-  password: '',        // default XAMPP kosong, kalau pakai password isi disini
-  database: 'learnspace'
-});
-
-db.connect((err) => {
-  if (err) {
-    console.error('❌ Koneksi database gagal:', err);
-    return;
-  }
-  console.log('✅ Terhubung ke database MySQL!');
-});
-
-// ==== UPLOAD FILE dengan Ekstensi ====
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "uploads"));
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
-
-const upload = multer({ storage: storage });
-
-// ==== MIDDLEWARE CEK LOGIN ADMIN ====
-function checkAdmin(req, res, next) {
-    if (req.session.isAdmin) {
-        return next();
-    }
-    return res.redirect("/login");
-}
-
-// Halaman Home (default)
 
 // ==== SESSION UNTUK LOGIN ADMIN ====
 app.use(
@@ -147,8 +107,7 @@ app.post("/daftar", upload.single("bukti"), (req, res) => {
   }
 
   // SIMPAN KE DATABASE
-  const sql = `INSERT INTO peserta (nama, email, kelas, buktiPath, buktiOriginalName, status) 
-               VALUES (?, ?, ?, ?, ?, 'pending')`;
+  const sql = `INSERT INTO peserta (nama, email, kelas, buktiPath, buktiOriginalName, status) VALUES (?, ?, ?, ?, ?, 'pending')`;
   
   const values = [
     nama,
@@ -177,111 +136,6 @@ app.post("/daftar", upload.single("bukti"), (req, res) => {
     });
   });
 });
-
-// Halaman Login Admin
-app.get("/login", (req, res) => {
-  res.render("loginAdmin");
-});
-
-// Proses Login Admin
-app.post("/login", (req, res) => {
-  const { nama, password } = req.body;
-
-  // ==== AKUN ADMIN ====
-  const ADMIN_USERNAME = "admin";
-  const ADMIN_PASSWORD = "12345";
-
-  if (nama === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    req.session.isAdmin = true;
-    return res.json({ success: true });
-  }
-
-  return res.json({ success: false });
-});
-
-// ===================== DASHBOARD ADMIN =====================
-
-// Halaman Dashboard Admin
-app.get("/admin", checkAdmin, (req, res) => {
-    // Ambil semua data peserta dari database
-    const sql = 'SELECT * FROM peserta ORDER BY id DESC';
-    
-    db.query(sql, (err, results) => {
-      if (err) {
-        console.error('❌ Error mengambil data:', err);
-        return res.status(500).send('Database error');
-      }
-
-      // Hitung statistik
-      const stats = {
-        total: results.length,
-        accepted: results.filter(p => p.status === 'accepted').length,
-        rejected: results.filter(p => p.status === 'rejected').length
-      };
-
-      console.log("===== CEK DATA PESERTA =====");
-      console.log("Jumlah peserta:", results.length);
-      console.log("Stats:", stats);
-
-      res.render("admin", { 
-        registrations: results,
-        stats: stats 
-      });
-    });
-});
-
-// Update Status Pendaftaran
-app.post("/admin/update-status", checkAdmin, (req, res) => {
-  const { id, status } = req.body;
-
-  console.log("===== UPDATE STATUS =====");
-  console.log("ID:", id);
-  console.log("Status:", status);
-
-  // Update status di database
-  const sql = 'UPDATE peserta SET status = ? WHERE id = ?';
-  
-  db.query(sql, [status, id], (err, result) => {
-    if (err) {
-      console.error('❌ Error update status:', err);
-      return res.status(500).json({
-        success: false,
-        message: 'Gagal mengupdate status'
-      });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Peserta tidak ditemukan'
-      });
-    }
-
-    console.log("✅ Status berhasil diupdate!");
-
-    // Hitung ulang statistik
-    db.query('SELECT * FROM peserta', (err, results) => {
-      const stats = {
-        total: results.length,
-        accepted: results.filter(p => p.status === 'accepted').length,
-        rejected: results.filter(p => p.status === 'rejected').length
-      };
-
-      res.json({
-        success: true,
-        message: `Status berhasil diubah menjadi ${status}`,
-        stats: stats
-      });
-    });
-  });
-});
-
-// Logout Admin
-app.get("/logout", (req, res) => {
-  req.session.destroy();
-  res.redirect("/login");
-});
-
 
 // Halaman Login Admin
 app.get("/login", (req, res) => {
