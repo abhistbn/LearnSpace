@@ -88,19 +88,27 @@ app.post("/generate-upload-url", async (req, res) => {
 });
 
 
+
 // ===================== FORM PENDAFTARAN =====================
 app.post("/daftar", async (req, res) => {
   try {
     const { nama, email, kelas, buktiURL, fileName, fileKey } = req.body;
 
+    // PASTIKAN STRING SQL SANGAT BERSIH!
     const sql = `
       INSERT INTO peserta 
       (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
       VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    `;
+    `.trim(); // <-- TAMBAHKAN .trim() untuk menghilangkan semua spasi/newline di awal dan akhir
+    
+    // Atau, secara manual tulis tanpa spasi berlebih:
+    /*
+    const sql = `INSERT INTO peserta 
+    (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending')`;
+    */
 
     await db.query(sql, [nama, email, kelas, fileKey, fileName, buktiURL]);
-    // Catatan: Gunakan buktiURL karena itu yang Anda simpan di hidden input
 
     // Kirim respons JSON yang menunjukkan sukses (frontend akan menangani redirect)
     return res.json({
