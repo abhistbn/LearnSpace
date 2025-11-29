@@ -1,3 +1,4 @@
+// === DOM ELEMENTS ===
 const fileUpload = document.getElementById("fileUpload");
 const uploadArea = document.getElementById("uploadArea");
 const filePreviewContainer = document.getElementById("filePreviewContainer");
@@ -5,31 +6,27 @@ const previewImage = document.getElementById("previewImage");
 const previewFilename = document.getElementById("previewFilename");
 const btnRemoveFile = document.getElementById("btnRemoveFile");
 
-function showNotification(message, type = 'success') {
-  // Remove existing notification if any
-  const existingNotif = document.querySelector('.notification');
-  if (existingNotif) {
-    existingNotif.remove();
-  }
+// === NOTIFICATION FUNCTION ===
+function showNotification(message, type = "success") {
+  const existingNotif = document.querySelector(".notification");
+  if (existingNotif) existingNotif.remove();
 
-  // Create notification element
-  const notification = document.createElement('div');
+  const notification = document.createElement("div");
   notification.className = `notification notification-${type}`;
   notification.innerHTML = `
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span style="font-size: 20px;">${type === 'success' ? '✓' : '✕'}</span>
+      <span style="font-size: 20px;">${type === "success" ? "✓" : "✕"}</span>
       <span>${message}</span>
     </div>
   `;
 
-  // Add styles
   notification.style.cssText = `
     position: fixed;
     top: 120px;
     right: 20px;
     padding: 15px 25px;
-    background-color: ${type === 'success' ? '#a995c7' : '#d7c8ec'};
-    color: ${type === 'success' ? '#ffffff' : '#4b3b63'};
+    background-color: ${type === "success" ? "#a995c7" : "#d7c8ec"};
+    color: ${type === "success" ? "#ffffff" : "#4b3b63"};
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 9999;
@@ -39,30 +36,17 @@ function showNotification(message, type = 'success') {
     min-width: 300px;
   `;
 
-  // Add animation styles if not already added
-  if (!document.getElementById('notification-styles')) {
-    const style = document.createElement('style');
-    style.id = 'notification-styles';
+  if (!document.getElementById("notification-styles")) {
+    const style = document.createElement("style");
+    style.id = "notification-styles";
     style.textContent = `
       @keyframes slideIn {
-        from {
-          transform: translateX(400px);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
+        from { transform: translateX(400px); opacity: 0; }
+        to   { transform: translateX(0); opacity: 1; }
       }
       @keyframes slideOut {
-        from {
-          transform: translateX(0);
-          opacity: 1;
-        }
-        to {
-          transform: translateX(400px);
-          opacity: 0;
-        }
+        from { transform: translateX(0); opacity: 1; }
+        to   { transform: translateX(400px); opacity: 0; }
       }
     `;
     document.head.appendChild(style);
@@ -70,59 +54,49 @@ function showNotification(message, type = 'success') {
 
   document.body.appendChild(notification);
 
-  // Remove after 4 seconds
   setTimeout(() => {
-    notification.style.animation = 'slideOut 0.3s ease-out';
+    notification.style.animation = "slideOut 0.3s ease-out";
     setTimeout(() => notification.remove(), 300);
   }, 4000);
 }
-// ========================================
 
+// === FILE PREVIEW HANDLER ===
 function handleFileSelect(file) {
-  if (file && file.type.startsWith("image/")) {
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      previewImage.src = e.target.result;
-      previewFilename.textContent = file.name;
+  if (!file) return;
 
-      // Hide upload area, show preview
-      uploadArea.style.display = "none";
-      filePreviewContainer.classList.add("active");
-    };
-    reader.readAsDataURL(file);
+  if (!file.type.startsWith("image/")) {
+    showNotification("File harus berupa gambar!", "error");
+    return;
   }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    previewImage.src = e.target.result;
+    previewFilename.textContent = file.name;
+
+    uploadArea.style.display = "none";
+    filePreviewContainer.classList.add("active");
+  };
+  reader.readAsDataURL(file);
 }
 
 function resetFileUpload() {
-  // Clear file input
   fileUpload.value = "";
-
-  // Hide preview, show upload area
-  filePreviewContainer.classList.remove("active");
-  uploadArea.style.display = "block";
-
-  // Clear preview
   previewImage.src = "";
   previewFilename.textContent = "";
+  filePreviewContainer.classList.remove("active");
+  uploadArea.style.display = "block";
 }
 
-// Click to upload
-uploadArea.addEventListener("click", () => {
-  fileUpload.click();
-});
+// === UPLOAD EVENTS ===
+uploadArea.addEventListener("click", () => fileUpload.click());
 
 fileUpload.addEventListener("change", (e) => {
-  if (e.target.files.length > 0) {
-    handleFileSelect(e.target.files[0]);
-  }
+  if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
 });
 
-// Remove file button
-btnRemoveFile.addEventListener("click", () => {
-  resetFileUpload();
-});
+btnRemoveFile.addEventListener("click", resetFileUpload);
 
-// Drag and drop for initial upload area
 uploadArea.addEventListener("dragover", (e) => {
   e.preventDefault();
   uploadArea.style.borderColor = "var(--tertiary)";
@@ -141,88 +115,105 @@ uploadArea.addEventListener("drop", (e) => {
 
   const files = e.dataTransfer.files;
   if (files.length > 0) {
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(files[0]);
-    fileUpload.files = dataTransfer.files;
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    fileUpload.files = dt.files;
     handleFileSelect(files[0]);
   }
 });
 
-// Form submission with AJAX
+// === SUBMIT FORM WITH PRESIGNED URL ===
 document.getElementById("registrationForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
-  const submitBtn = form.querySelector('.btn-submit');
-  const originalBtnText = submitBtn.textContent;
-  
-  // Disable submit button
+
+  // === VALIDASI FILE WAJIB ===
+  const file = fileUpload.files[0];
+  if (!file) {
+    showNotification("Silakan upload bukti pembayaran.", "error");
+    return;
+  }
+
+  const submitBtn = form.querySelector(".btn-submit");
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Mengirim...';
-  submitBtn.style.opacity = '0.6';
-  submitBtn.style.cursor = 'not-allowed';
+  submitBtn.textContent = "Mengirim...";
 
   try {
-    const formData = new FormData(form);
-    
-    console.log('Mengirim data ke server...');
-    
-    const response = await fetch('/daftar', {
-      method: 'POST',
-      body: formData
+    let fileURL = "";
+    let fileKey = "";
+    let fileName = file.name;
+
+    // === 1. Ambil Presigned URL dari server ===
+    const presignRes = await fetch("/generate-upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+      }),
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response ok:', response.ok);
+    const presignData = await presignRes.json();
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!presignData.success) {
+      throw new Error("Tidak bisa mendapatkan presigned URL");
     }
 
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Server tidak mengembalikan JSON response');
-    }
+    const { uploadURL, fileURL: s3FileURL, key } = presignData;
 
-    const result = await response.json();
-    console.log('Response dari server:', result);
+    fileURL = s3FileURL;
+    fileKey = key;
+
+    // === 2. Upload file ke S3 ===
+    await fetch(uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+
+    // === 3. Kirim data form ke server ===
+    const sendRes = await fetch("/daftar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nama: form.nama.value,
+        email: form.email.value,
+        kelas: form.kelas.value,
+        fileURL,
+        fileName,
+        fileKey,
+      }),
+    });
+
+    const result = await sendRes.json();
 
     if (result.success) {
-      // Show success notification
-      showNotification(result.message || 'Pendaftaran berhasil dikirim!', 'success');
-      
-      // Redirect ke halaman sukses
-      setTimeout(() => {
-        window.location.href = '/sukses';
-      }, 1000);
+      showNotification("Pendaftaran berhasil!", "success");
+      setTimeout(() => window.location.href = "/sukses", 800);
     } else {
-      showNotification(result.message || 'Gagal mengirim pendaftaran', 'error');
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalBtnText;
-      submitBtn.style.opacity = '1';
-      submitBtn.style.cursor = 'pointer';
+      showNotification(result.message, "error");
     }
-  } catch (error) {
-    console.error('Error detail:', error);
-    showNotification('Terjadi kesalahan: ' + error.message, 'error');
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalBtnText;
-    submitBtn.style.opacity = '1';
-    submitBtn.style.cursor = 'pointer';
+  } catch (err) {
+    showNotification("Error: " + err.message, "error");
+    console.error(err);
   }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Daftar";
 });
 
-// Check for success/error in URL params (for non-AJAX fallback)
-window.addEventListener('DOMContentLoaded', () => {
+// === CHECK URL NOTIFS ===
+window.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
-  
-  if (urlParams.get('success') === 'true') {
-    showNotification('Pendaftaran berhasil dikirim!', 'success');
-    // Clean URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-  } else if (urlParams.get('error') === 'true') {
-    showNotification('Terjadi kesalahan saat mengirim data', 'error');
-    // Clean URL
-    window.history.replaceState({}, document.title, window.location.pathname);
+
+  if (urlParams.get("success") === "true") {
+    showNotification("Pendaftaran berhasil dikirim!", "success");
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+
+  if (urlParams.get("error") === "true") {
+    showNotification("Terjadi kesalahan saat mengirim data.", "error");
+    window.history.replaceState({}, "", window.location.pathname);
   }
 });
