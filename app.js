@@ -5,6 +5,8 @@ const path = require("path");
 const session = require("express-session");
 const mysql = require("mysql2");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const crypto = require("crypto");
 
 const app = express();
 
@@ -12,10 +14,8 @@ const app = express();
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "src", "views"));
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(fileUpload());
 
 // ===================== SESSION =====================
 app.use(
@@ -47,55 +47,48 @@ const s3 = new S3Client({
 });
 
 // ===================== HALAMAN PUBLIK =====================
-app.get("/", (req, res) => {
-  res.render("home");
-});
+app.get("/", (req, res) => res.render("home"));
+app.get("/daftar", (req, res) => res.render("form"));
+app.get("/tentang", (req, res) => res.render("tentang"));
+app.get("/sukses", (req, res) => res.render("sukses"));
 
-app.get("/daftar", (req, res) => {
-  res.render("form");
-});
 
-app.get("/tentang", (req, res) => {
-  res.render("tentang");
-});
-
-app.get("/sukses", (req, res) => {
-  res.render("sukses");
-});
-
-// ===================== UPLOAD FILE (DRAG & DROP / FORM) =====================
-app.post("/upload", async (req, res) => {
+// =========================================================
+// =============== GENERATE PRESIGNED URL ==================
+// =========================================================
+app.post("/generate-upload-url", async (req, res) => {
   try {
-    if (!req.files || !req.files.file) {
-      return res.status(400).json({ success: false, message: "Tidak ada file" });
-    }
+    const { fileName, fileType } = req.body;
 
-    const file = req.files.file;
+    if (!fileName || !fileType)
+      return res.status(400).json({ success: false, message: "Data tidak lengkap" });
 
-    // Sanitize filename
-    const safeName = file.name.replace(/[^\w.-]/g, "_");
-    const key = `uploads/${Date.now()}_${safeName}`;
+    const ext = fileName.split(".").pop();
+    const safeName = fileName.replace(/[^\w.-]/g, "_");
 
-    const params = {
+    const fileKey = `uploads/${Date.now()}_${crypto.randomUUID()}_${safeName}`;
+
+    const command = new PutObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME,
-      Key: key,
-      Body: file.data,
-      ContentType: file.mimetype,
-    };
+      Key: fileKey,
+      ContentType: fileType,
+    });
 
-    await s3.send(new PutObjectCommand(params));
+    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 60 });
 
     return res.json({
       success: true,
-      fileURL: `https://${process.env.AWS_BUCKET_NAME}.s3.amazonaws.com/${key}`,
-      fileKey: key,
-      originalName: file.name,
+      uploadUrl,
+      fileKey,
+      fileURL: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
+      fileName: safeName,
     });
   } catch (err) {
-    console.error("❌ Upload Error:", err);
-    return res.status(500).json({ success: false, message: "Gagal upload ke S3" });
+    console.error("❌ Error generate URL:", err);
+    return res.status(500).json({ success: false, message: "Gagal membuat upload URL" });
   }
 });
+
 
 // ===================== FORM PENDAFTARAN =====================
 app.post("/daftar", async (req, res) => {
@@ -108,14 +101,7 @@ app.post("/daftar", async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, 'pending')
     `;
 
-    await db.query(sql, [
-      nama,
-      email,
-      kelas,
-      fileKey,
-      fileName,
-      fileURL,
-    ]);
+    await db.query(sql, [nama, email, kelas, fileKey, fileName, fileURL]);
 
     return res.json({
       success: true,
@@ -131,24 +117,17 @@ app.post("/daftar", async (req, res) => {
   }
 });
 
+
 // ===================== LOGIN ADMIN =====================
-app.get("/login", (req, res) => {
-  res.render("loginAdmin");
-});
+app.get("/login", (req, res) => res.render("loginAdmin"));
 
 app.post("/login", async (req, res) => {
   try {
     const { nama, password } = req.body;
-
-    const sql = "SELECT * FROM admin WHERE nama = ? LIMIT 1";
-    const [results] = await db.query(sql, [nama]);
+    const [results] = await db.query("SELECT * FROM admin WHERE nama = ? LIMIT 1", [nama]);
 
     if (results.length === 0) return res.json({ success: false });
-
-    const admin = results[0];
-
-    if (admin.password !== password)
-      return res.json({ success: false });
+    if (results[0].password !== password) return res.json({ success: false });
 
     req.session.isAdmin = true;
     return res.json({ success: true });
@@ -166,8 +145,7 @@ function checkAdmin(req, res, next) {
 
 app.get("/admin", checkAdmin, async (req, res) => {
   try {
-    const sql = "SELECT * FROM peserta ORDER BY id DESC";
-    const [results] = await db.query(sql);
+    const [results] = await db.query("SELECT * FROM peserta ORDER BY id DESC");
 
     const stats = {
       total: results.length,
@@ -175,10 +153,7 @@ app.get("/admin", checkAdmin, async (req, res) => {
       rejected: results.filter((p) => p.status === "rejected").length,
     };
 
-    res.render("admin", {
-      registrations: results,
-      stats: stats,
-    });
+    res.render("admin", { registrations: results, stats });
   } catch (err) {
     console.error("❌ Error mengambil data:", err);
     res.status(500).send("Database error");
@@ -190,15 +165,13 @@ app.post("/admin/update-status", checkAdmin, async (req, res) => {
   try {
     const { id, status } = req.body;
 
-    const sql = "UPDATE peserta SET status = ? WHERE id = ?";
-    const [result] = await db.query(sql, [status, id]);
+    const [result] = await db.query("UPDATE peserta SET status = ? WHERE id = ?", [
+      status,
+      id,
+    ]);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Peserta tidak ditemukan",
-      });
-    }
+    if (result.affectedRows === 0)
+      return res.status(404).json({ success: false, message: "Peserta tidak ditemukan" });
 
     const [results] = await db.query("SELECT * FROM peserta");
 
@@ -208,21 +181,14 @@ app.post("/admin/update-status", checkAdmin, async (req, res) => {
       rejected: results.filter((p) => p.status === "rejected").length,
     };
 
-    res.json({
-      success: true,
-      message: `Status berhasil diubah menjadi ${status}`,
-      stats: stats,
-    });
+    res.json({ success: true, stats });
   } catch (err) {
     console.error("❌ Error update status:", err);
-    res.status(500).json({
-      success: false,
-      message: "Gagal mengupdate status",
-    });
+    res.status(500).json({ success: false, message: "Gagal mengupdate status" });
   }
 });
 
-// Logout
+// ===================== LOGOUT =====================
 app.get("/logout", (req, res) => {
   req.session.destroy();
   res.redirect("/login");
