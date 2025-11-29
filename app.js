@@ -4,7 +4,6 @@ const express = require("express");
 const path = require("path");
 const session = require("express-session");
 const mysql = require("mysql2");
-const fileUpload = require("express-fileupload");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 const app = express();
