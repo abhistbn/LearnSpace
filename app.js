@@ -90,29 +90,30 @@ app.post("/generate-upload-url", async (req, res) => {
 
 // ===================== FORM PENDAFTARAN =====================
 app.post("/daftar", async (req, res) => {
-  try {
-    const { nama, email, kelas, fileURL, fileName, fileKey } = req.body;
+  try {
+    const { nama, email, kelas, buktiURL, fileName, fileKey } = req.body;
 
-    const sql = `
-      INSERT INTO peserta 
-      (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    `;
+    const sql = `
+      INSERT INTO peserta 
+      (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    `;
 
-    await db.query(sql, [nama, email, kelas, fileKey, fileName, fileURL]);
+    await db.query(sql, [nama, email, kelas, fileKey, fileName, buktiURL]);
+    // Catatan: Gunakan buktiURL karena itu yang Anda simpan di hidden input
 
-    return res.json({
-      success: true,
-      message: "Pendaftaran berhasil!",
-      fileURL,
-    });
-  } catch (err) {
-    console.error("❌ Error /daftar:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Terjadi kesalahan saat mendaftar",
-    });
-  }
+    // Kirim respons JSON yang menunjukkan sukses (frontend akan menangani redirect)
+    return res.json({
+      success: true,
+      message: "Pendaftaran berhasil, siap untuk redirect.",
+    });
+  } catch (err) {
+    console.error("❌ Error /daftar:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat mendaftar",
+    });
+  }
 });
 
 
