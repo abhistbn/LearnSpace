@@ -1,12 +1,12 @@
 require("dotenv").config();
 
 const express = require("express");
-const multer = require("multer");
 const path = require("path");
 const session = require("express-session");
 const mysql = require("mysql2");
-const fs = require("fs");
 const AWS = require("aws-sdk");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const app = express();
 
@@ -28,45 +28,27 @@ app.use(
 );
 
 // ===================== DATABASE =====================
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-}).promise();
+const db = mysql
+  .createConnection({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT,
+  })
+  .promise();
 
-// db.connect((err) => {
-//   if (err) {
-//     console.error("❌ Koneksi database gagal:", err);
-//     return;
-//   }
-//   console.log("✅ Terhubung ke database MySQL!");
-// });
-
-// ===================== MULTER (UPLOAD FILE) =====================
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "uploads"));
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix =
-      Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
-  },
+// ===================== AWS REGION =====================
+AWS.config.update({
+  region: process.env.AWS_REGION,
 });
 
-const upload = multer({ storage: storage });
-
-// ===================== MIDDLEWARE CEK ADMIN =====================
-function checkAdmin(req, res, next) {
-  if (req.session.isAdmin) return next();
-  return res.redirect("/login");
-}
+// Untuk Presigned URL
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+});
 
 // ===================== HALAMAN PUBLIK =====================
-
 app.get("/", (req, res) => {
   res.render("home");
 });
@@ -83,48 +65,43 @@ app.get("/sukses", (req, res) => {
   res.render("sukses");
 });
 
-// ===================== CONFIG AWS S3 TANPA ACCESS KEY =====================
-AWS.config.update({
-  region: process.env.AWS_REGION,
+// ===================== GENERATE PRESIGNED URL =====================
+app.post("/generate-upload-url", async (req, res) => {
+  try {
+    const { fileName, fileType } = req.body;
+
+    const safeName = fileName.replace(/[^\w.-]/g, "_");
+    const key = `uploads/${Date.now()}_${safeName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: key,
+      ContentType: fileType,
+    });
+
+    const uploadURL = await getSignedUrl(s3Client, command, {
+      expiresIn: 300,
+    });
+
+    return res.json({
+      success: true,
+      uploadURL,
+      fileURL: `https://${process.env.AWS_BUCKET_NAME}.s3.amazonaws.com/${key}`,
+      key,
+    });
+  } catch (err) {
+    console.error("❌ Error generate presigned URL:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Gagal membuat URL upload" });
+  }
 });
 
-const s3 = new AWS.S3();
-
-
 // ===================== FORM PENDAFTARAN =====================
-app.post("/daftar", upload.single("bukti"), async (req, res) => {
+app.post("/daftar", async (req, res) => {
   try {
-    const file = req.file;
-    let fileURL = null;
-    let fileOriginalName = null;
-    let filePathInBucket = null;
+    const { nama, email, kelas, fileURL, fileName, fileKey } = req.body;
 
-    if (file) {
-      // Amankan nama file (hapus spasi & karakter aneh)
-      const safeName = file.originalname.replace(/[^\w.-]/g, "_");
-
-      const fileContent = fs.readFileSync(file.path);
-
-      const uploadParams = {
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: `uploads/${Date.now()}_${safeName}`,
-        Body: fileContent,
-        ContentType: file.mimetype,
-      };
-
-      try {
-        const s3Result = await s3.upload(uploadParams).promise();
-
-        fileURL = s3Result.Location;
-        fileOriginalName = safeName;
-        filePathInBucket = uploadParams.Key;
-      } finally {
-        // Hapus file lokal apapun hasilnya
-        fs.unlinkSync(file.path);
-      }
-    }
-
-    // Simpan ke database
     const sql = `
       INSERT INTO peserta 
       (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
@@ -132,20 +109,19 @@ app.post("/daftar", upload.single("bukti"), async (req, res) => {
     `;
 
     await db.query(sql, [
-      req.body.nama,
-      req.body.email,
-      req.body.kelas,
-      filePathInBucket,
-      fileOriginalName,
+      nama,
+      email,
+      kelas,
+      fileKey,
+      fileName,
       fileURL,
     ]);
 
     return res.json({
       success: true,
       message: "Pendaftaran berhasil!",
-      fileURL: fileURL,
+      fileURL,
     });
-
   } catch (err) {
     console.error("❌ Error /daftar:", err);
     return res.status(500).json({
@@ -155,12 +131,11 @@ app.post("/daftar", upload.single("bukti"), async (req, res) => {
   }
 });
 
-
-
 // ===================== LOGIN ADMIN =====================
 app.get("/login", (req, res) => {
   res.render("loginAdmin");
 });
+
 app.post("/login", async (req, res) => {
   try {
     const { nama, password } = req.body;
@@ -178,15 +153,18 @@ app.post("/login", async (req, res) => {
 
     req.session.isAdmin = true;
     return res.json({ success: true });
-
   } catch (err) {
     console.error("DB ERROR:", err);
     return res.json({ success: false });
   }
 });
 
-
 // ===================== DASHBOARD ADMIN =====================
+function checkAdmin(req, res, next) {
+  if (req.session.isAdmin) return next();
+  return res.redirect("/login");
+}
+
 app.get("/admin", checkAdmin, async (req, res) => {
   try {
     const sql = "SELECT * FROM peserta ORDER BY id DESC";
@@ -208,8 +186,7 @@ app.get("/admin", checkAdmin, async (req, res) => {
   }
 });
 
-
-// Update Status
+// Update Status Peserta
 app.post("/admin/update-status", checkAdmin, async (req, res) => {
   try {
     const { id, status } = req.body;
@@ -237,7 +214,6 @@ app.post("/admin/update-status", checkAdmin, async (req, res) => {
       message: `Status berhasil diubah menjadi ${status}`,
       stats: stats,
     });
-
   } catch (err) {
     console.error("❌ Error update status:", err);
     res.status(500).json({
@@ -246,7 +222,6 @@ app.post("/admin/update-status", checkAdmin, async (req, res) => {
     });
   }
 });
-
 
 // Logout
 app.get("/logout", (req, res) => {
