@@ -23,7 +23,7 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
   })
 );
 
@@ -34,15 +34,15 @@ const db = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
-});
+}).promise();
 
-db.connect((err) => {
-  if (err) {
-    console.error("❌ Koneksi database gagal:", err);
-    return;
-  }
-  console.log("✅ Terhubung ke database MySQL!");
-});
+// db.connect((err) => {
+//   if (err) {
+//     console.error("❌ Koneksi database gagal:", err);
+//     return;
+//   }
+//   console.log("✅ Terhubung ke database MySQL!");
+// });
 
 // ===================== MULTER (UPLOAD FILE) =====================
 const storage = multer.diskStorage({
@@ -99,75 +99,75 @@ app.post("/daftar", upload.single("bukti"), async (req, res) => {
     let fileOriginalName = null;
     let filePathInBucket = null;
 
-    // Upload ke S3
     if (file) {
+      // Amankan nama file (hapus spasi & karakter aneh)
+      const safeName = file.originalname.replace(/[^\w.-]/g, "_");
+
       const fileContent = fs.readFileSync(file.path);
 
-    const uploadParams = {
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: `uploads/${Date.now()}_${file.originalname}`,
-      Body: fileContent,
-      ContentType: file.mimetype,
-    };
+      const uploadParams = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: `uploads/${Date.now()}_${safeName}`,
+        Body: fileContent,
+        ContentType: file.mimetype,
+      };
 
+      try {
+        const s3Result = await s3.upload(uploadParams).promise();
 
-      const s3Result = await s3.upload(uploadParams).promise();
-
-      fileURL = s3Result.Location;
-      fileOriginalName = file.originalname;
-      filePathInBucket = uploadParams.Key;
-
-      fs.unlinkSync(file.path);
+        fileURL = s3Result.Location;
+        fileOriginalName = safeName;
+        filePathInBucket = uploadParams.Key;
+      } finally {
+        // Hapus file lokal apapun hasilnya
+        fs.unlinkSync(file.path);
+      }
     }
 
-    // Simpan database
-    const query = `
+    // Simpan ke database
+    const sql = `
       INSERT INTO peserta 
-      (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status) 
+      (nama, email, kelas, buktiPath, buktiOriginalName, buktiURL, status)
       VALUES (?, ?, ?, ?, ?, ?, 'pending')
     `;
 
-    await db.query(query, [
+    await db.query(sql, [
       req.body.nama,
       req.body.email,
       req.body.kelas,
       filePathInBucket,
       fileOriginalName,
-      fileURL
+      fileURL,
     ]);
 
     return res.json({
       success: true,
       message: "Pendaftaran berhasil!",
-      fileURL: fileURL
+      fileURL: fileURL,
     });
 
   } catch (err) {
     console.error("❌ Error /daftar:", err);
-
     return res.status(500).json({
       success: false,
-      message: "Terjadi kesalahan saat mendaftar"
+      message: "Terjadi kesalahan saat mendaftar",
     });
   }
 });
+
 
 
 // ===================== LOGIN ADMIN =====================
 app.get("/login", (req, res) => {
   res.render("loginAdmin");
 });
+app.post("/login", async (req, res) => {
+  try {
+    const { nama, password } = req.body;
 
-app.post("/login", (req, res) => {
-  const { nama, password } = req.body;
+    const sql = "SELECT * FROM admin WHERE nama = ? LIMIT 1";
 
-  const sql = "SELECT * FROM admin WHERE nama = ? LIMIT 1";
-
-  db.query(sql, [nama], (err, results) => {
-    if (err) {
-      console.error("DB ERROR:", err);
-      return res.json({ success: false });
-    }
+    const [results] = await db.query(sql, [nama]);
 
     if (results.length === 0) return res.json({ success: false });
 
@@ -178,18 +178,19 @@ app.post("/login", (req, res) => {
 
     req.session.isAdmin = true;
     return res.json({ success: true });
-  });
+
+  } catch (err) {
+    console.error("DB ERROR:", err);
+    return res.json({ success: false });
+  }
 });
 
-// ===================== DASHBOARD ADMIN =====================
-app.get("/admin", checkAdmin, (req, res) => {
-  const sql = "SELECT * FROM peserta ORDER BY id DESC";
 
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error("❌ Error mengambil data:", err);
-      return res.status(500).send("Database error");
-    }
+// ===================== DASHBOARD ADMIN =====================
+app.get("/admin", checkAdmin, async (req, res) => {
+  try {
+    const sql = "SELECT * FROM peserta ORDER BY id DESC";
+    const [results] = await db.query(sql);
 
     const stats = {
       total: results.length,
@@ -201,23 +202,20 @@ app.get("/admin", checkAdmin, (req, res) => {
       registrations: results,
       stats: stats,
     });
-  });
+  } catch (err) {
+    console.error("❌ Error mengambil data:", err);
+    res.status(500).send("Database error");
+  }
 });
 
+
 // Update Status
-app.post("/admin/update-status", checkAdmin, (req, res) => {
-  const { id, status } = req.body;
+app.post("/admin/update-status", checkAdmin, async (req, res) => {
+  try {
+    const { id, status } = req.body;
 
-  const sql = "UPDATE peserta SET status = ? WHERE id = ?";
-
-  db.query(sql, [status, id], (err, result) => {
-    if (err) {
-      console.error("❌ Error update status:", err);
-      return res.status(500).json({
-        success: false,
-        message: "Gagal mengupdate status",
-      });
-    }
+    const sql = "UPDATE peserta SET status = ? WHERE id = ?";
+    const [result] = await db.query(sql, [status, id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
@@ -226,21 +224,29 @@ app.post("/admin/update-status", checkAdmin, (req, res) => {
       });
     }
 
-    db.query("SELECT * FROM peserta", (err, results) => {
-      const stats = {
-        total: results.length,
-        accepted: results.filter((p) => p.status === "accepted").length,
-        rejected: results.filter((p) => p.status === "rejected").length,
-      };
+    const [results] = await db.query("SELECT * FROM peserta");
 
-      res.json({
-        success: true,
-        message: `Status berhasil diubah menjadi ${status}`,
-        stats: stats,
-      });
+    const stats = {
+      total: results.length,
+      accepted: results.filter((p) => p.status === "accepted").length,
+      rejected: results.filter((p) => p.status === "rejected").length,
+    };
+
+    res.json({
+      success: true,
+      message: `Status berhasil diubah menjadi ${status}`,
+      stats: stats,
     });
-  });
+
+  } catch (err) {
+    console.error("❌ Error update status:", err);
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengupdate status",
+    });
+  }
 });
+
 
 // Logout
 app.get("/logout", (req, res) => {
