@@ -4,9 +4,8 @@ const express = require("express");
 const path = require("path");
 const session = require("express-session");
 const mysql = require("mysql2");
-const AWS = require("aws-sdk");
+const fileUpload = require("express-fileupload");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const app = express();
 
@@ -17,6 +16,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload());
 
 // ===================== SESSION =====================
 app.use(
@@ -38,14 +38,13 @@ const db = mysql
   })
   .promise();
 
-// ===================== AWS REGION =====================
-AWS.config.update({
+// ===================== S3 CLIENT =====================
+const s3 = new S3Client({
   region: process.env.AWS_REGION,
-});
-
-// Untuk Presigned URL
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+  },
 });
 
 // ===================== HALAMAN PUBLIK =====================
@@ -65,35 +64,37 @@ app.get("/sukses", (req, res) => {
   res.render("sukses");
 });
 
-// ===================== GENERATE PRESIGNED URL =====================
-app.post("/generate-upload-url", async (req, res) => {
+// ===================== UPLOAD FILE (DRAG & DROP / FORM) =====================
+app.post("/upload", async (req, res) => {
   try {
-    const { fileName, fileType } = req.body;
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ success: false, message: "Tidak ada file" });
+    }
 
-    const safeName = fileName.replace(/[^\w.-]/g, "_");
+    const file = req.files.file;
+
+    // Sanitize filename
+    const safeName = file.name.replace(/[^\w.-]/g, "_");
     const key = `uploads/${Date.now()}_${safeName}`;
 
-    const command = new PutObjectCommand({
+    const params = {
       Bucket: process.env.AWS_BUCKET_NAME,
       Key: key,
-      ContentType: fileType,
-    });
+      Body: file.data,
+      ContentType: file.mimetype,
+    };
 
-    const uploadURL = await getSignedUrl(s3Client, command, {
-      expiresIn: 300,
-    });
+    await s3.send(new PutObjectCommand(params));
 
     return res.json({
       success: true,
-      uploadURL,
       fileURL: `https://${process.env.AWS_BUCKET_NAME}.s3.amazonaws.com/${key}`,
-      key,
+      fileKey: key,
+      originalName: file.name,
     });
   } catch (err) {
-    console.error("❌ Error generate presigned URL:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Gagal membuat URL upload" });
+    console.error("❌ Upload Error:", err);
+    return res.status(500).json({ success: false, message: "Gagal upload ke S3" });
   }
 });
 
@@ -141,7 +142,6 @@ app.post("/login", async (req, res) => {
     const { nama, password } = req.body;
 
     const sql = "SELECT * FROM admin WHERE nama = ? LIMIT 1";
-
     const [results] = await db.query(sql, [nama]);
 
     if (results.length === 0) return res.json({ success: false });
@@ -186,7 +186,7 @@ app.get("/admin", checkAdmin, async (req, res) => {
   }
 });
 
-// Update Status Peserta
+// ===================== UPDATE STATUS ADMIN =====================
 app.post("/admin/update-status", checkAdmin, async (req, res) => {
   try {
     const { id, status } = req.body;
@@ -231,7 +231,6 @@ app.get("/logout", (req, res) => {
 
 // ===================== PORT =====================
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server berjalan di http://0.0.0.0:${PORT}`);
 });
