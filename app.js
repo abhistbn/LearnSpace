@@ -1,3 +1,4 @@
+require("dotenv").config();
 
 const express = require("express");
 const multer = require("multer");
@@ -7,158 +8,127 @@ const mysql = require("mysql2");
 
 const app = express();
 
-// ==== KONFIGURASI DASAR ====
+// ===================== CONFIG DASAR =====================
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "src", "views"));
 app.use(express.static(path.join(__dirname, "public")));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ==== SESSION UNTUK LOGIN ADMIN ====
+// ===================== SESSION =====================
 app.use(
   session({
-    secret: "adminsecret123",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
   })
 );
 
-// ==== KONEKSI DATABASE ====
+// ===================== DATABASE =====================
 const db = mysql.createConnection({
-  host: 'learnspace-db.cdcs2wkm2ehy.us-east-1.rds.amazonaws.com',
-  user: 'learnspace',       
-  password: 'Adminls123!',       
-  database: 'learnspace',
-  port : 3306
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
 });
 
 db.connect((err) => {
   if (err) {
-    console.error('❌ Koneksi database gagal:', err);
+    console.error("❌ Koneksi database gagal:", err);
     return;
   }
-  console.log('✅ Terhubung ke database MySQL!');
+  console.log("✅ Terhubung ke database MySQL!");
 });
 
-// ==== UPLOAD FILE dengan Ekstensi ====
+// ===================== MULTER (UPLOAD FILE) =====================
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, "uploads"));
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix =
+      Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
+    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+  },
 });
 
 const upload = multer({ storage: storage });
 
-// ==== MIDDLEWARE CEK LOGIN ADMIN ====
+// ===================== MIDDLEWARE CEK ADMIN =====================
 function checkAdmin(req, res, next) {
-    if (req.session.isAdmin) {
-        return next();
-    }
-    return res.redirect("/login");
+  if (req.session.isAdmin) return next();
+  return res.redirect("/login");
 }
-
 
 // ===================== HALAMAN PUBLIK =====================
 
-// HOME
 app.get("/", (req, res) => {
   res.render("home");
 });
 
-// FORM PENDAFTARAN
 app.get("/daftar", (req, res) => {
   res.render("form");
 });
 
-// TENTANG
 app.get("/tentang", (req, res) => {
   res.render("tentang");
 });
 
-// Success Page
 app.get("/sukses", (req, res) => {
   res.render("sukses");
 });
 
-// SUBMIT FORM PENDAFTARAN
+// Submit Form Pendaftaran
 app.post("/daftar", upload.single("bukti"), (req, res) => {
   const { nama, email, kelas } = req.body;
   const fileData = req.file;
 
-  console.log("===== DATA PESERTA =====");
-  console.log("Nama:", nama);
-  console.log("Email:", email);
-  console.log("Kelas:", kelas);
-  console.log("===== FILE UPLOAD =====");
-  console.log(fileData);
-
-  // Validasi data
   if (!nama || !email || !kelas || !fileData) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Data tidak lengkap, mohon isi semua field!" 
+    return res.status(400).json({
+      success: false,
+      message: "Data tidak lengkap, mohon isi semua field!",
     });
   }
 
-  // SIMPAN KE DATABASE
-  const sql = `INSERT INTO peserta (nama, email, kelas, buktiPath, buktiOriginalName, status) VALUES (?, ?, ?, ?, ?, 'pending')`;
-  
+  const sql = `
+    INSERT INTO peserta (nama, email, kelas, buktiPath, buktiOriginalName, status)
+    VALUES (?, ?, ?, ?, ?, 'pending')
+  `;
+
   const values = [
     nama,
     email,
     kelas,
     `/uploads/${fileData.filename}`,
-    fileData.originalname
+    fileData.originalname,
   ];
 
   db.query(sql, values, (err, result) => {
     if (err) {
-      console.error('❌ Error menyimpan data:', err);
+      console.error("❌ Error menyimpan data:", err);
       return res.status(500).json({
         success: false,
-        message: 'Gagal menyimpan data ke database'
+        message: "Gagal menyimpan data ke database",
       });
     }
 
-    console.log("✅ Data peserta tersimpan ke database!");
-    console.log("ID:", result.insertId);
-
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Pendaftaran berhasil!",
-      redirectUrl: "/sukses"
+      redirectUrl: "/sukses",
     });
   });
 });
 
-// Halaman Login Admin
+// ===================== LOGIN ADMIN =====================
+
 app.get("/login", (req, res) => {
   res.render("loginAdmin");
 });
 
-// Proses Login Admin
-// app.post("/login", (req, res) => {
-//   const { nama, password } = req.body;
-
-//   // ==== AKUN ADMIN ====
-//   const ADMIN_USERNAME = "admin";
-//   const ADMIN_PASSWORD = "12345";
-
-//   if (nama === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-//     req.session.isAdmin = true;
-//     return res.json({ success: true });
-//   }
-
-//   return res.json({ success: false });
-// });
-
-//karena pake mysql jadi diganti langsung nyambung dari sql nya
 app.post("/login", (req, res) => {
   const { nama, password } = req.body;
 
@@ -170,106 +140,137 @@ app.post("/login", (req, res) => {
       return res.json({ success: false });
     }
 
-    if (results.length === 0) {
-      return res.json({ success: false });
-    }
+    if (results.length === 0) return res.json({ success: false });
 
     const admin = results[0];
 
-    if (admin.password !== password) {
+    if (admin.password !== password)
       return res.json({ success: false });
-    }
 
     req.session.isAdmin = true;
     return res.json({ success: true });
   });
 });
 
-
 // ===================== DASHBOARD ADMIN =====================
 
-// Halaman Dashboard Admin
 app.get("/admin", checkAdmin, (req, res) => {
-    // Ambil semua data peserta dari database
-    const sql = 'SELECT * FROM peserta ORDER BY id DESC';
-    
-    db.query(sql, (err, results) => {
-      if (err) {
-        console.error('❌ Error mengambil data:', err);
-        return res.status(500).send('Database error');
-      }
+  const sql = "SELECT * FROM peserta ORDER BY id DESC";
 
-      // Hitung statistik
-      const stats = {
-        total: results.length,
-        accepted: results.filter(p => p.status === 'accepted').length,
-        rejected: results.filter(p => p.status === 'rejected').length
-      };
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("❌ Error mengambil data:", err);
+      return res.status(500).send("Database error");
+    }
 
-      console.log("===== CEK DATA PESERTA =====");
-      console.log("Jumlah peserta:", results.length);
-      console.log("Stats:", stats);
+    const stats = {
+      total: results.length,
+      accepted: results.filter((p) => p.status === "accepted").length,
+      rejected: results.filter((p) => p.status === "rejected").length,
+    };
 
-      res.render("admin", { 
-        registrations: results,
-        stats: stats 
-      });
+    res.render("admin", {
+      registrations: results,
+      stats: stats,
     });
+  });
 });
 
-// Update Status Pendaftaran
+// Update Status
 app.post("/admin/update-status", checkAdmin, (req, res) => {
   const { id, status } = req.body;
 
-  console.log("===== UPDATE STATUS =====");
-  console.log("ID:", id);
-  console.log("Status:", status);
+  const sql = "UPDATE peserta SET status = ? WHERE id = ?";
 
-  // Update status di database
-  const sql = 'UPDATE peserta SET status = ? WHERE id = ?';
-  
   db.query(sql, [status, id], (err, result) => {
     if (err) {
-      console.error('❌ Error update status:', err);
+      console.error("❌ Error update status:", err);
       return res.status(500).json({
         success: false,
-        message: 'Gagal mengupdate status'
+        message: "Gagal mengupdate status",
       });
     }
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Peserta tidak ditemukan'
+        message: "Peserta tidak ditemukan",
       });
     }
 
-    console.log("✅ Status berhasil diupdate!");
-
-    // Hitung ulang statistik
-    db.query('SELECT * FROM peserta', (err, results) => {
+    db.query("SELECT * FROM peserta", (err, results) => {
       const stats = {
         total: results.length,
-        accepted: results.filter(p => p.status === 'accepted').length,
-        rejected: results.filter(p => p.status === 'rejected').length
+        accepted: results.filter((p) => p.status === "accepted").length,
+        rejected: results.filter((p) => p.status === "rejected").length,
       };
 
       res.json({
         success: true,
         message: `Status berhasil diubah menjadi ${status}`,
-        stats: stats
+        stats: stats,
       });
     });
   });
 });
 
-// Logout Admin
+// Logout
 app.get("/logout", (req, res) => {
   req.session.destroy();
   res.redirect("/login");
 });
 
+
+// ===================== UPLOAD KE AWS S3 =====================
+const AWS = require("aws-sdk");
+const fs = require("fs");
+
+// Konfigurasi AWS (TANPA access key)
+AWS.config.update({
+  region: process.env.AWS_REGION,
+});
+
+const s3 = new AWS.S3();
+
+app.post("/upload", upload.single("foto"), async (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).send("File tidak ditemukan");
+    }
+
+    const fileContent = fs.readFileSync(file.path);
+
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: `uploads/${Date.now()}_${file.originalname}`,
+      Body: fileContent,
+      ACL: "public-read",
+      ContentType: file.mimetype,
+    };
+
+    const uploadResult = await s3.upload(params).promise();
+
+    fs.unlinkSync(file.path);
+
+    res.json({
+      success: true,
+      message: "Upload berhasil",
+      url: uploadResult.Location,
+    });
+
+  } catch (err) {
+    console.error("❌ Upload error:", err);
+    return res.status(500).send("Upload gagal");
+  }
+});
+
+
+
 // ===================== PORT =====================
-app.listen(3000, '0.0.0.0', () => {
-  console.log("Server berjalan di http://0.0.0.0:3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server berjalan di http://0.0.0.0:${PORT}`);
 });
