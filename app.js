@@ -92,7 +92,7 @@ const s3 = new AWS.S3();
 
 
 // ===================== FORM PENDAFTARAN =====================
-app.post("/daftar", upload.single("foto"), async (req, res) => {
+app.post("/daftar", upload.single("bukti"), async (req, res) => {
   try {
     const file = req.file;
     let fileURL = null;
@@ -103,13 +103,13 @@ app.post("/daftar", upload.single("foto"), async (req, res) => {
     if (file) {
       const fileContent = fs.readFileSync(file.path);
 
-      const uploadParams = {
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: `uploads/${Date.now()}_${file.originalname}`,
-        Body: fileContent,
-        ACL: "public-read",
-        ContentType: file.mimetype,
-      };
+    const uploadParams = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: `uploads/${Date.now()}_${file.originalname}`,
+      Body: fileContent,
+      ContentType: file.mimetype,
+    };
+
 
       const s3Result = await s3.upload(uploadParams).promise();
 
