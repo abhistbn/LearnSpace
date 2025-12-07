@@ -192,6 +192,6 @@ app.get("/logout", (req, res) => {
 
 // ===================== PORT =====================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server berjalan di http://0.0.0.0:${PORT}`);
+app.listen(PORT, "127.0.0.1", () => {
+  console.log(`Server berjalan di http://127.0.0.1:${PORT}`);
 });
