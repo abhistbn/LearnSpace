@@ -34,8 +34,19 @@ const db = mysql
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT,
+    connectTimeout: 10000,
   })
   .promise();
+
+  db.query("SELECT 1")
+  .then(() => console.log("✅ Database connected successfully"))
+  .catch((err) => {
+    console.error("❌ Database connection failed:");
+    console.error("   Error Code:", err.code);
+    console.error("   Error Message:", err.message);
+    console.error("   Host:", process.env.DB_HOST);
+    console.error("   Database:", process.env.DB_NAME);
+  });
 
 // ===================== S3 CLIENT =====================
 const s3 = new S3Client({
